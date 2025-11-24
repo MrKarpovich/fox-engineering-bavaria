@@ -22,7 +22,7 @@
 ### 🤖 Try the Bot <a name="try-the-bot"></a>
 Open → **[@FoxRecallsBot](https://t.me/FoxRecallsBot)**
 
-- Tap 🇪🇺 **BMW Malaysia** → Check **Campaign Status**  
+- Tap 🇪🇺 **BMW EU** → Check **Campaign Status**  
   *(Only for vehicles sold by BMW Authorised Dealerships in Malaysia)*  
 - Tap 🇺🇸 **BMW USA** → Check **Safety & Emission Recalls**
 - Send codes like `0011200700` → Get instant, clear descriptions
@@ -30,7 +30,7 @@ Open → **[@FoxRecallsBot](https://t.me/FoxRecallsBot)**
 - 🔒 Your VIN is **never processed or stored** by this bot
 
 > ℹ️ *"From time to time, we run technical campaigns to address even the slightest possibilities that may disrupt your driving pleasure."*  
-> — Official statement, [BMW Malaysia](https://www.bmw.com.my/en/topics/bmw-owners/bmw-aftersales-services/technical-campaign.html)
+> — Official statement, [BMW EU](https://www.bmw.com.my/en/topics/bmw-owners/bmw-aftersales-services/technical-campaign.html)
 
 > ⚠️ **Note**: The Malaysia portal is **not applicable to imported used cars**.
 
@@ -40,7 +40,6 @@ Open → **[@FoxRecallsBot](https://t.me/FoxRecallsBot)**
 We’re building a **simple .exe application** with:
 - 🇬🇧 / 🇷🇺 language selector  
 - Paste codes → Click “Search” → See results instantly  
-- No internet required after launch  
 - Beautiful, lightweight GUI (Python-based, easy to use)
 
 Stay tuned — we’ll announce it in the bot and here!
@@ -75,17 +74,17 @@ Always open to ideas, feedback, and collaboration!
 ### 🤖 Попробуйте бота <a name="try-the-bot-ru"></a>
 Откройте → **[@FoxRecallsBot](https://t.me/FoxRecallsBot)**
 
-- Нажмите 🇪🇺 **BMW Малайзия** → Проверка **статуса кампании**  
-  *(только для авто, проданных авторизованными дилерами BMW в Малайзии)*  
+- Нажмите 🇪🇺 **BMW Европа** → Проверка **статуса**  
+  *(только для авто, проданных авторизованными дилерами BMW в Европе)*  
 - Нажмите 🇺🇸 **BMW США** → Проверка **отзывов по безопасности и экологии**
 - Отправьте коды, например `0011200700` → получите мгновенное описание
 - Переключайтесь между **английским и русским** в любое время
 - 🔒 Ваш VIN **никогда не обрабатывается и не сохраняется**
 
-> ℹ️ *«Мы проводим технические кампании, чтобы устранить даже малейшие неисправности, способные повлиять на удовольствие от вождения.»*  
-> — Официальное заявление, [BMW Malaysia](https://www.bmw.com.my/en/topics/bmw-owners/bmw-aftersales-services/technical-campaign.html)
+> ℹ️ *«Мы проводим технические акции, чтобы устранить даже малейшие неисправности, способные повлиять на удовольствие от вождения.»*  
+> — Официальное заявление, [BMW EU](https://www.bmw.com.my/en/topics/bmw-owners/bmw-aftersales-services/technical-campaign.html)
 
-> ⚠️ **Важно**: Портал Малайзии **не применяется к импортированным подержанным автомобилям**.
+> ⚠️ **Важно**: Портал EU **не применяется к импортированным подержанным автомобилям**.
 
 ---
 
@@ -93,7 +92,6 @@ Always open to ideas, feedback, and collaboration!
 Готовим **простое .exe-приложение** с:
 - Выбором языка: 🇬🇧 / 🇷🇺  
 - Вставьте коды → нажмите «Поиск» → увидьте результат  
-- Не требует интернета после запуска  
 - Красивый и лёгкий интерфейс на Python
 
 Следите за обновлениями — анонс будет в боте и здесь!
