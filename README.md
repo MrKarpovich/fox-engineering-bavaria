@@ -1,8 +1,5 @@
 # 🦊 Fox-Engineering-Bavaria — Open Toolkit for BMW Diagnostics & Engineering
 
-[EN]  
-[RU] (scroll down)
-
 ---
 
 ## 📖 Contents
