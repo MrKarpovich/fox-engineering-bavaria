@@ -508,14 +508,16 @@ class ISTARegFoxApp:
 
         base_key = BMW_KEYS[flavor]
 
-        psdz_path = self.cache.get("last_psdz_path")
-        if not psdz_path:
-            choice = self.cache.get("psdz_choice")
-            if choice == "external":
-                psdz_path = self.cache.get("psdz_external_path", "")
-            else:
-                folder = self.cache.get("factory_psdz_folder", "data_swi")
-                psdz_path = f"{PSDZ_BASE_REL}\\{folder}"
+        # Получаем сохранённый выбор
+        folder = self.cache.get("factory_psdz_folder")
+        if folder not in ("data", "data_swi"):
+            # Если не выбрано — спрашиваем у пользователя
+            folder = self.choose_factory_folder()
+            if not folder:
+                messagebox.showwarning("Отмена", "Деактивация отменена: не выбрана папка psdzdata.")
+                return
+
+        psdz_path = f"{PSDZ_BASE_REL}\\{folder}"
 
         success = True
         success &= set_registry_value(base_key, RHEINGOLD_SUBKEY, "BMW.Rheingold.Programming.PsdzDataPath", psdz_path)
@@ -541,4 +543,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = ISTARegFoxApp(root)
     root.mainloop()
-  
