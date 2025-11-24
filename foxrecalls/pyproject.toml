@@ -1,0 +1,13 @@
+[project]
+name = "fox-recalls"
+version = "1.0.0"
+description = "A Telegram bot to check BMW technical campaigns and recalls"
+requires-python = ">=3.12, <3.14"
+dependencies = [
+    "aiogram==3.22.0",
+    "python-dotenv==1.1.0"
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
