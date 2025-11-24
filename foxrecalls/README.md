@@ -47,11 +47,9 @@ Stay tuned — we’ll announce it in the bot and here!
 ---
 
 ### 🛠️ Tech Specs <a name="tech-specs--технические-детали"></a>
-- **Python**: 3.13.5 (tested), compatible with 3.9+  
+- **Python**: 3.13.5 (tested), compatible with 3.12+  
 - **Framework**: `aiogram==3.22.0`  
 - **Dependencies**: `python-dotenv==1.1.0`  
-- **Data Source**: Official BMW defect code database  
-- **Privacy**: No VIN processing. No user data stored.  
 - **License**: MIT
 
 ---
@@ -99,11 +97,9 @@ Always open to ideas, feedback, and collaboration!
 ---
 
 ### 🛠️ Технические детали <a name="tech-specs-ru"></a>
-- **Python**: 3.13.5 (тестировалось), работает на 3.9+  
+- **Python**: 3.13.5 (тестировалось), работает на 3.12+  
 - **Фреймворк**: `aiogram==3.22.0`  
 - **Зависимости**: `python-dotenv==1.1.0`  
-- **Источник данных**: Официальная база кодов BMW  
-- **Конфиденциальность**: VIN не обрабатывается. Данные не хранятся.  
 - **Лицензия**: MIT
 
 ---
