@@ -59,7 +59,6 @@ Check your BMW for active recalls & technical campaigns.
 - 🇺🇸 **BMW USA** 
 - Send defect codes → get instant descriptions  
 - Telegram bot: [@FoxRecallsBot](https://t.me/FoxRecallsBot)  
-- Desktop app (coming soon)
 
 > ⚠️ **Note**: The EU portal is **not applicable to imported used cars**.
 
@@ -141,7 +140,6 @@ They do **not contain or distribute BMW software or data** — only work with fi
 - 🇺🇸 **BMW США**
 - Отправляйте коды → получайте мгновенные описания  
 - Telegram-бот: [@FoxRecallsBot](https://t.me/FoxRecallsBot)  
-- Десктопное приложение (скоро!)
 
 > ⚠️ **Важно**: Портал EU **не применяется к импортированным подержанным автомобилям**.
 
