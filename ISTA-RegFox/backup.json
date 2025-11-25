@@ -1,0 +1,194 @@
+{
+    "SOFTWARE\\BMWGroup\\ISPI\\ISTA": {
+        "DataVersion": {
+            "value": "4.55.30",
+            "type": "REG_SZ"
+        },
+        "DataVersion_en-GB": {
+            "value": "4.55.30",
+            "type": "REG_SZ"
+        },
+        "DataVersion_fr-FR": {
+            "value": "4.55.30",
+            "type": "REG_SZ"
+        },
+        "LogisticBaseVersion": {
+            "value": "4.55.30",
+            "type": "REG_SZ"
+        },
+        "MainProductVersion": {
+            "value": "4.55",
+            "type": "REG_SZ"
+        },
+        "ProductVersion": {
+            "value": "4.55.30.31657",
+            "type": "REG_SZ"
+        },
+        "Title": {
+            "value": "ISTA",
+            "type": "REG_SZ"
+        },
+        "LoggingLocation": {
+            "value": "%ISPIDATA%\\BMW\\ISPI\\logs\\TRIC\\ISTA\\|%ISPIDATA%\\BMW\\ISPI\\logs\\TRIC\\ISTALauncher\\|%ISPIDATA%\\BMW\\ISPI\\logs\\TRIC\\FscValidation\\|%ISPIDATA%\\BMW\\ISPI\\logs\\TRIC\\ISTA\\PsdzServiceHost|%ISPIDATA%\\BMW\\ISPI\\data\\TRIC\\ISTA\\Testdaten\\",
+            "type": "REG_EXPAND_SZ"
+        },
+        "InstallDate": {
+            "value": "14.11.2025",
+            "type": "REG_SZ"
+        },
+        "InstallLocation": {
+            "value": "C:\\Program Files\\BMW\\ISPI\\TRIC\\ISTA",
+            "type": "REG_SZ"
+        },
+        "SWIData": {
+            "value": "4.55.30",
+            "type": "REG_SZ"
+        }
+    },
+    "SOFTWARE\\BMWGroup\\ISPI\\Rheingold": {
+        "BMW.Rheingold.ISTAGUI.NewGUIActive": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.OnlineMode": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "TesterGUI.EcuTree.ExpertMode": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.Developer.guidebug": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.OperationalMode": {
+            "value": "ISTA_PLUS",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.Programming.Enabled": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.UseIdentNuget": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "DebugLevel": {
+            "value": "9",
+            "type": "REG_SZ"
+        },
+        "EnableRelevanceFaultCode": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "TesterGUI.ExpertMode": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.Programming.Sdp.Patch.Enabled": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.CoreFramework.PUKActive": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.CoreFramework.ILeanActive": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.CoreFramework.OSSModeActive": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.CoreFramework.PrintingType": {
+            "value": "DIALOG",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.Diagnostics.VehicleIdent.ReadFASTAData": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.CoreFramework.TRICZentralActive": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.CoreFramework.UseTricZenctralForVPS": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.Diagnostics.EnableRsuProcessHandling": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.ExecutionBreak.Version": {
+            "value": "4.55.21",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.ISTAGUI.App.MultipleInstancesAllowed": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.ISTAGUI.Dialogs.AdministrationDialog.ShowPTTSelection": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.SdpOnlinePatchAndMultisession_Activate": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.ISTAGUI.Pages.StartPage.ShowDisclaimer": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.OnlinePatch.Serviceprogram.IsActive": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.OnlinePatch.Validity.IsActive": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.Programming.ExpertMode": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.Programming.PsdzDataPath": {
+            "value": "..\\\\..\\\\..\\\\PSdZ\\data",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.PsdzWebservice_Activate": {
+            "value": "false",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.RheingoldSessionController.Logic.TransferECUKomViaFASTA": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.VehicleIdentification.TypeKeyIdentEnabled": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.RheingoldSessionController.FASTATransferMode": {
+            "value": "None",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.UseJreWithTLS13Support_Activate": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "StealthMode": {
+            "value": "true",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.ISTAGUI.BinPathModifications": {
+            "value": "C:\\Program Files\\BMW\\ISPI\\TRIC\\ISTA\\EdiabasLib",
+            "type": "REG_SZ"
+        },
+        "BMW.Rheingold.ISTAGUI.EdiabasIDESBinPathModifications": {
+            "value": "C:\\Program Files\\BMW\\ISPI\\TRIC\\ISTA\\EdiabasLib",
+            "type": "REG_SZ"
+        }
+    }
+}
