@@ -1,27 +1,33 @@
 """
 E-Sys FoxData — Admin GUI + Telegram bot (aiogram 3.22, PyQt6)
+Single-file version (Variant A) — uses admin JSON index only for searching.
+
 Features:
- - Admin GUI (PyQt6) to set psdzdata_root, index_json, output_base and telegram token
+ - Admin GUI (PyQt6) to set psdzdata_root, index_json (or generate), output_base and telegram token
  - Generate index (scan) with progress
  - Bot: inline buttons, typing action, progress updates, logging
  - Per-user personal folders: output_base/<user_id>/...
- - Uses admin index_json (optionally user can upload personal JSON)
+ - Uses admin index_json only (clients DO NOT upload JSON)
+ - Automatic splitting of archives into parts <= 800 MB
+ - Removal of user temp folder after successful send
+ - /help and /faq commands with contact link
 """
 
-import os
 import sys
+import os
 import json
 import re
 import shutil
 import zipfile
+import tempfile
 import logging
 import hashlib
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Tuple, List
 
 import asyncio
 
-# PyQt6 imports
+# PyQt6
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel,
     QLineEdit, QFileDialog, QMessageBox, QProgressBar, QStackedWidget
@@ -29,7 +35,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import QThread, pyqtSignal, QObject
 
-# aiogram imports (3.22)
+# aiogram 3.22
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import FSInputFile
@@ -120,7 +126,7 @@ def atomic_save_json(data: dict, path: Path):
     temp.replace(path)
 
 
-def extract_search_tokens(query: str):
+def extract_search_tokens(query: str) -> Tuple[Any, Any]:
     parts = query.strip().lower().split('_')
     if len(parts) < 5:
         return None, None
@@ -139,17 +145,72 @@ def search_in_json(data: dict, query: str) -> dict:
     return results
 
 
-def zip_folder(folder_path: Path, zip_path: Path):
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        for root, dirs, files in os.walk(folder_path):
-            for f in files:
-                full = os.path.join(root, f)
-                arc = os.path.relpath(full, folder_path)
+def ensure_user_dir(output_base: Path, user_id: int) -> Path:
+    ud = output_base / str(user_id)
+    ud.mkdir(parents=True, exist_ok=True)
+    return ud
+
+
+# split list of (rel_path, size) into batches where each batch total_size <= MAX_ARCHIVE_SIZE
+def make_batches_by_size(items: List[Tuple[str, int]], max_bytes: int) -> List[List[Tuple[str, int]]]:
+    batches = []
+    current = []
+    cur_size = 0
+    for rel, size in items:
+        if current and (cur_size + size > max_bytes):
+            batches.append(current)
+            current = []
+            cur_size = 0
+        current.append((rel, size))
+        cur_size += size
+    if current:
+        batches.append(current)
+    return batches
+
+
+def create_zip_from_batch(psdz_root: Path, batch: List[Tuple[str, int]], zip_path: Path):
+    # Create temporary folder and copy files into "psdzdata" subfolder structure, then zip and remove folder.
+    with tempfile.TemporaryDirectory() as td:
+        base = Path(td)
+        psdz_dest = base / "psdzdata"
+        for rel, _ in batch:
+            src = psdz_root / rel
+            dst = psdz_dest / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            # copy2 preserves metadata
+            shutil.copy2(src, dst)
+        # create zip from psdz_dest but arcname root should be "psdzdata/..."
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf:
+            root_len = len(str(psdz_dest.parent)) + 1
+            for dirpath, dirs, files in os.walk(psdz_dest):
+                for f in files:
+                    full = os.path.join(dirpath, f)
+                    arc = full[root_len:]
+                    zf.write(full, arc)
+
+
+# Alternative: directly add files to zip with arcname "psdzdata/rel"
+def create_zip_direct(psdz_root: Path, batch: List[Tuple[str, int]], zip_path: Path):
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf:
+        for rel, _ in batch:
+            full = psdz_root / rel
+            if full.exists():
+                arc = os.path.join("psdzdata", rel)
                 zf.write(full, arc)
 
 
+# cleanup user dir
+def cleanup_user_dir(user_dir: Path):
+    try:
+        if user_dir.exists():
+            shutil.rmtree(user_dir)
+        log_info(f"Removed user dir: {user_dir}")
+    except Exception as e:
+        log_error(f"Failed to remove user dir {user_dir}: {e}")
+
+
 # ----------------------------
-# Scanner Worker (PyQt thread)
+# PyQt Scanner Worker
 # ----------------------------
 class ScannerWorker(QObject):
     progress = pyqtSignal(int, int)
@@ -177,7 +238,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("🦊 E-Sys FoxData — Настройка")
-        self.resize(760, 520)
+        self.resize(720, 480)
         self.db = load_db()
         self.stacked = QStackedWidget()
         self.setCentralWidget(self.stacked)
@@ -210,7 +271,8 @@ class MainWindow(QMainWindow):
 
     def browse_psdz(self):
         folder = QFileDialog.getExistingDirectory(self, "Выберите папку psdzdata")
-        if folder: self.psdz_edit.setText(folder)
+        if folder:
+            self.psdz_edit.setText(folder)
 
     def to_page2(self):
         path = self.psdz_edit.text().strip()
@@ -246,11 +308,12 @@ class MainWindow(QMainWindow):
 
     def generate_json(self):
         folder = QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения JSON")
-        if not folder: return
+        if not folder:
+            return
         json_path = Path(folder) / "psdz_index.json"
         reply = QMessageBox.question(
             self, "Подтверждение",
-            "Генерация индекса может занять много времени. Продолжить?"
+            "Генерация индекса может занять много времени (чтение большого объёма файлов + хеширование). Продолжить?"
         )
         if reply == QMessageBox.StandardButton.Yes:
             self.show_scanner_window(json_path)
@@ -315,7 +378,8 @@ class MainWindow(QMainWindow):
 
     def browse_output(self):
         folder = QFileDialog.getExistingDirectory(self, "Выберите папку для результатов")
-        if folder: self.output_edit.setText(folder)
+        if folder:
+            self.output_edit.setText(folder)
 
     def to_page4(self):
         path = self.output_edit.text().strip()
@@ -380,7 +444,6 @@ class BotThread(QThread):
     def run(self):
         try:
             self.status_updated.emit("Запуск бота...")
-            # Run asynchronous bot
             asyncio.run(start_bot(self.token, self.status_updated))
         except Exception as e:
             log_error(f"BotThread error: {e}")
@@ -388,24 +451,32 @@ class BotThread(QThread):
 
 
 # ----------------------------
-# Telegram bot logic (async)
+# Telegram bot async logic
 # ----------------------------
 async def start_bot(token: str, status_signal):
     bot = Bot(token=token)
     dp = Dispatcher()
 
-    db = load_db()
-    psdz_root = Path(db.get("psdzdata_root", ""))
-    index_json = Path(db.get("index_json", ""))  # admin index
-    output_base = Path(db.get("output_base", ""))
+    # Helper: load admin index JSON (maps rel_path -> {size, hash})
+    def load_admin_index() -> Dict[str, dict]:
+        db = load_db()
+        idx = db.get("index_json", "")
+        if not idx:
+            return {}
+        try:
+            with open(idx, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            log_error(f"Failed to load admin index: {e}")
+            return {}
 
-    # /start handler
+    # /start, /help, /faq handlers
     @dp.message(Command("start"))
     async def cmd_start(message: types.Message):
         kb = InlineKeyboardBuilder()
-        kb.button(text="📂 Загрузить личный JSON", callback_data="upload_personal_json")
-        kb.button(text="❓ Как это работает", callback_data="how_it_works")
-        kb.adjust(1)
+        kb.button(text="❓ /help", callback_data="help_cb")
+        kb.button(text="📚 /faq", callback_data="faq_cb")
+        kb.adjust(2)
         await message.answer(
             "🦊 *Привет! Это E-Sys FoxData.*\n\n"
             "Отправь мне названия недостающих файлов (через пробел/новую строку/запятую).\n"
@@ -414,50 +485,47 @@ async def start_bot(token: str, status_signal):
             reply_markup=kb.as_markup()
         )
 
-    # inline callbacks
-    @dp.callback_query(lambda c: c.data == "upload_personal_json")
-    async def cb_upload_personal_json(cb: types.CallbackQuery):
-        await cb.message.answer("📄 Отправьте JSON-файл как документ — я сохраню его в вашей персональной папке.")
-        await cb.answer()
-
-    @dp.callback_query(lambda c: c.data == "how_it_works")
-    async def cb_how_it_works(cb: types.CallbackQuery):
-        await cb.message.answer(
-            "1. Отправляете названия файлов (например `CAFD_00001234_001_000_021`).\n"
-            "2. Я ищу в админском JSON (и в вашем личном, если вы загрузили).\n"
-            "3. Показываю найденные/не найденные. Вы подтверждаете.\n"
-            "4. Я копирую найденные файлы из admin psdzdata в вашу личную папку и архивирую.\n"
-            "5. Отправляю архив вам.\n\n"
-            "Если нужно — отправьте личный JSON перед поиском."
+    @dp.message(Command("help"))
+    async def cmd_help(message: types.Message):
+        txt = (
+            "🆘 *Помощь — как пользоваться ботом*\n\n"
+            "1. Отправь названия файлов в строке (например `CAFD_00001234_001_000_021`). Можно несколько — через пробел/новую строку/запятую.\n"
+            "2. Я ищу по админскому JSON (индекс хранит администратор сервера).\n"
+            "3. После поиска я покажу, что найдено и что нет — подтвердите продолжение.\n"
+            "4. Я соберу архив(ы) и отправлю их вам. После успешной отправки временные файлы будут удалены.\n\n"
+            "Если нужна помощь админа — свяжитесь с автором: t.me/JluceHok_u3_MuHcka"
         )
-        await cb.answer()
+        await message.answer(txt, parse_mode="Markdown")
 
-    # Handler: user uploads personal JSON document
-    @dp.message(lambda m: m.document is not None and m.document.file_name.lower().endswith('.json'))
-    async def handle_personal_json(message: types.Message):
-        db = load_db()
-        if not output_base:
-            await message.answer("⚠️ Администратор не настроил output_base. Обратитесь к администратору.")
-            return
-        user_dir = Path(db.get("output_base")) / str(message.from_user.id)
-        user_dir.mkdir(parents=True, exist_ok=True)
-        dest = user_dir / "user_index.json"
-        # Download document using aiogram convenient method
-        try:
-            await message.document.download(destination=dest.as_posix())
-            await message.answer("✅ Личный JSON сохранён в вашей персональной папке.")
-            log_info(f"user {message.from_user.id} uploaded personal JSON -> {dest}")
-        except Exception as e:
-            await message.answer(f"⚠️ Ошибка сохранения JSON: {e}")
-            log_error(f"download personal json error: {e}")
+    @dp.message(Command("faq"))
+    async def cmd_faq(message: types.Message):
+        txt = (
+            "📚 *FAQ*\n\n"
+            "Q: Что если файл слишком большой?  \n"
+            "A: Файлы >1450 МБ не отправляются автоматически; вы получите уведомление и сможете изменить запрос.\n\n"
+            "Q: Как разбиваются архивы?  \n"
+            f"A: Автоматически на части ≤ {MAX_ARCHIVE_SIZE_MB} МБ.\n\n"
+            "Контакт: t.me/JluceHok_u3_MuHcka"
+        )
+        await message.answer(txt, parse_mode="Markdown")
 
-    # Helper to split tokens
-    def split_tokens(text: str):
+    @dp.callback_query(lambda c: c.data == "help_cb")
+    async def cb_help(cq: types.CallbackQuery):
+        await cq.message.answer("Используйте /help и /faq для подробной информации.")
+        await cq.answer()
+
+    @dp.callback_query(lambda c: c.data == "faq_cb")
+    async def cb_faq(cq: types.CallbackQuery):
+        await cq.message.answer("См. /faq — там ответы на частые вопросы и контакты.")
+        await cq.answer()
+
+    # Helper: split user input tokens
+    def split_tokens(text: str) -> List[str]:
         return [s.strip() for s in re.split(r'[,\s\n]+', text) if s.strip()]
 
-    # Main text handler — user sends tokens to search
+    # Main handler: user sends tokens
     @dp.message()
-    async def handle_search(message: types.Message):
+    async def handle_messages(message: types.Message):
         db = load_db()
         psdz_root = Path(db.get("psdzdata_root", ""))
         index_path = Path(db.get("index_json", ""))
@@ -478,38 +546,19 @@ async def start_bot(token: str, status_signal):
             await message.answer("❗ Не удалось извлечь токены.")
             return
 
-        # Load admin index
-        try:
-            with open(index_path, "r", encoding="utf-8") as f:
-                admin_index = json.load(f)
-        except Exception as e:
-            await message.answer(f"⚠️ Ошибка загрузки index JSON: {e}")
-            log_error(f"Failed to load admin index json: {e}")
+        admin_index = load_admin_index()
+        if not admin_index:
+            await message.answer("⚠️ Админский индекс не доступен. Обратитесь к администратору.")
             return
 
-        # Also load user personal index if exists
-        user_personal_index = {}
-        user_index_path = output_base / str(message.from_user.id) / "user_index.json"
-        if user_index_path.exists():
-            try:
-                with open(user_index_path, "r", encoding="utf-8") as f:
-                    user_personal_index = json.load(f)
-            except Exception as e:
-                log_error(f"Failed load user personal index: {e}")
-
-        # Search tokens in admin_index (and also in personal index)
-        matches_map = {}  # rel_path -> info
+        # Collect matches (unique)
+        matches_map: Dict[str, dict] = {}
         search_report = []
         for token in tokens:
-            # try user index first, then admin index
-            found_in_user = search_in_json(user_personal_index, token) if user_personal_index else {}
-            found_in_admin = search_in_json(admin_index, token)
-            total_found = {}
-            total_found.update(found_in_admin or {})
-            total_found.update(found_in_user or {})
-            if total_found:
-                search_report.append((token, True, len(total_found)))
-                for rel, info in total_found.items():
+            res = search_in_json(admin_index, token)
+            if res:
+                search_report.append((token, True, len(res)))
+                for rel, info in res.items():
                     matches_map[rel] = info
             else:
                 search_report.append((token, False, 0))
@@ -518,181 +567,227 @@ async def start_bot(token: str, status_signal):
             await message.answer("❌ Ничего не найдено по вашим токенам.")
             return
 
-        # Build feedback message
-        found_lines = []
-        total_size = 0
-        too_large = []
-        big_files = []
+        # Create list with sizes and existence check
+        file_info = []
+        not_found_on_disk = []
         for rel, info in matches_map.items():
-            sz = info.get("size", 0)
-            total_size += sz
-            found_lines.append(f"• `{rel}` ({sz / (1024 ** 2):.1f} МБ)")
-            if sz > MAX_SINGLE_FILE_SIZE:
-                too_large.append((rel, sz))
-            elif sz > LARGE_FILE_THRESHOLD:
-                big_files.append((rel, sz))
+            src = psdz_root / rel
+            if src.exists() and src.is_file():
+                file_info.append((rel, info.get("size", 0)))
+            else:
+                not_found_on_disk.append(rel)
 
-        summary = "🔎 *Результаты поиска:*\n\n"
+        # Prepare feedback text
+        summary_lines = []
+        total_size = sum(size for _, size in file_info)
         for token, ok, cnt in search_report:
-            summary += ("✅" if ok else "❌") + f" `{token}` — найдено: {cnt}\n"
-        summary += f"\nНайденные файлы (показано до 200 строк):\n" + "\n".join(found_lines[:200])
-        summary += f"\n\nСуммарный размер: *{total_size / (1024 ** 2):.1f} МБ*"
+            summary_lines.append(("✅" if ok else "❌") + f" `{token}` — найдено: {cnt}")
+        summary = "🔎 *Результаты поиска:*\n\n" + "\n".join(summary_lines)
+        summary += f"\n\nНайденные на диске: {len(file_info)} файлов\n" \
+                   f"Не найдено на диске (в JSON, но отсутствует по пути): {len(not_found_on_disk)}\n" \
+                   f"\nСуммарный размер (файлы, которые есть на диске): *{total_size / (1024 ** 2):.1f} МБ*"
 
-        if too_large:
-            summary += "\n\n⚠️ Есть файлы >1450 МБ — их нельзя отправить автоматически."
-        if big_files:
-            summary += "\n\n⚠️ Некоторые файлы >999 МБ — вы будете спрошены, продолжать ли с ними."
+        if any(size > MAX_SINGLE_FILE_SIZE for _, size in file_info):
+            summary += f"\n\n⚠️ Есть файлы >{MAX_SINGLE_FILE_SIZE // (1024 ** 2)} МБ — их нельзя отправить автоматически."
 
-        # Save request snapshot to DB for callback usage
+        if any(size > LARGE_FILE_THRESHOLD for _, size in file_info):
+            summary += f"\n\n⚠️ Есть большие файлы (> {LARGE_FILE_THRESHOLD // (1024 ** 2)} МБ)."
+
+        # Save snapshot for callback
         db = load_db()
         reqs = db.get("requests", {})
-        reqs[str(message.from_user.id)] = {
-            "matches": matches_map,
-            "total_size": total_size
-        }
+        reqs[str(message.from_user.id)] = {"matches": {rel: {"size": sz} for rel, sz in file_info},
+                                           "not_on_disk": not_found_on_disk}
         db["requests"] = reqs
         save_db(db)
 
-        # Inline buttons: continue / cancel
+        # Inline: Continue / Cancel
         kb = InlineKeyboardBuilder()
-        kb.button(text="✅ Продолжить (скопировать в личную папку)", callback_data=json.dumps({
-            "act": "continue",
-            "uid": message.from_user.id
-        }))
+        kb.button(text="✅ Продолжить (собирать архив и отправить)",
+                  callback_data=json.dumps({"act": "continue", "uid": message.from_user.id}))
         kb.button(text="❌ Отменить", callback_data=json.dumps({"act": "cancel"}))
         kb.adjust(1)
 
         # Send summary
         await message.answer(summary, parse_mode="Markdown", reply_markup=kb.as_markup())
         log_info(
-            f"user {message.from_user.id} search: {len(matches_map)} files, total {total_size / (1024 ** 2):.1f} MB")
+            f"user {message.from_user.id} search: found_on_disk={len(file_info)} missing_on_disk={len(not_found_on_disk)} total_mb={total_size / (1024 ** 2):.1f}")
 
-    # Callback query handler to process continue/cancel
+    # Callback handler
     @dp.callback_query(lambda c: True)
-    async def cb_any(cq: types.CallbackQuery):
+    async def cb_general(cq: types.CallbackQuery):
+        payload_raw = cq.data
         try:
-            payload = json.loads(cq.data)
+            payload = json.loads(payload_raw)
         except Exception:
             await cq.answer()
             return
-
         act = payload.get("act")
         if act == "cancel":
-            await cq.message.edit_text("❌ Операция отменена пользователем.")
+            try:
+                await cq.message.edit_text("❌ Операция отменена пользователем.")
+            except Exception:
+                pass
+            await cq.answer()
+            return
+        if act != "continue":
+            await cq.answer();
+            return
+
+        uid = str(payload.get("uid"))
+        db = load_db()
+        req = db.get("requests", {}).get(uid)
+        if not req:
+            await cq.message.answer("⚠️ Нет данных запроса — повторите поиск.")
             await cq.answer()
             return
 
-        if act == "continue":
-            uid = str(payload.get("uid"))
-            db = load_db()
-            req = db.get("requests", {}).get(uid)
-            if not req:
-                await cq.message.answer("⚠️ Данные запроса не найдены. Повторите поиск.")
-                await cq.answer()
-                return
+        matches = req.get("matches", {})  # rel -> {"size": size}
+        not_on_disk = req.get("not_on_disk", [])
 
-            matches: Dict[str, dict] = req.get("matches", {})
-            total_size = req.get("total_size", 0)
-
-            # Basic checks
-            if total_size > MAX_ARCHIVE_SIZE * 10:
-                await cq.message.answer("⚠️ Общий размер слишком большой. Разбейте запрос.")
-                await cq.answer()
-                return
-
-            # If any single file > MAX_SINGLE_FILE_SIZE -> abort and report
-            singles = [r for r, info in matches.items() if info.get("size", 0) > MAX_SINGLE_FILE_SIZE]
-            if singles:
-                txt = "❌ Эти файлы >1450 МБ и не могут быть отправлены автоматически:\n" + "\n".join(
-                    f"• `{s}`" for s in singles)
-                await cq.message.edit_text(txt, parse_mode="Markdown")
-                await cq.answer()
-                return
-
-            # Copy files to user's personal folder inside output_base/<uid>/psdzdata/...
-            db = load_db()
-            psdz_root = Path(db.get("psdzdata_root", ""))
-            output_base = Path(db.get("output_base", ""))
-            if not (psdz_root.exists() and output_base.exists()):
-                await cq.message.answer("⚠️ Администратор не настроил систему (psdz_root/output_base).")
-                await cq.answer()
-                return
-
-            user_dir = output_base / uid
-            psdz_dest = user_dir / "psdzdata"
-            # remove previous psdzdata folder for fresh copy
-            if psdz_dest.exists():
-                shutil.rmtree(psdz_dest)
-            psdz_dest.mkdir(parents=True, exist_ok=True)
-
-            # Progress message
-            progress_msg = await cq.message.answer("🔁 Копирование файлов: 0%")
+        if not matches:
+            await cq.message.answer("⚠️ Нет файлов для обработки.")
             await cq.answer()
+            return
 
-            items = list(matches.items())
-            total = len(items)
-            copied = 0
-            for i, (rel, info) in enumerate(items, start=1):
-                src = psdz_root / rel
-                dst = psdz_dest / rel
-                try:
-                    if not src.exists():
-                        await cq.message.answer(f"⚠️ Файл не найден в источнике: `{rel}`", parse_mode="Markdown")
-                        continue
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, dst)
-                    copied += 1
-                except Exception as e:
-                    await cq.message.answer(f"⚠️ Ошибка копирования `{rel}`: {e}")
-                    log_error(f"copy error {rel}: {e}")
-
-                pct = int(100 * i / total)
-                try:
-                    # typing animation
-                    await bot.send_chat_action(cq.message.chat.id, ChatAction.TYPING)
-                except Exception:
-                    pass
-                # update progress message
-                try:
-                    await progress_msg.edit_text(f"🔁 Копирование файлов: {i}/{total} ({pct}%)")
-                except Exception:
-                    pass
-
-            # Build the zip inside user_dir
-            await progress_msg.edit_text("📦 Сборка архива...")
-            zip_out = user_dir / f"Esys_FoxData_{uid}.zip"
-            # remove old zip if exists
-            if zip_out.exists():
-                zip_out.unlink(missing_ok=True)
-            # create zip (include psdzdata folder structure)
-            with zipfile.ZipFile(zip_out, "w", zipfile.ZIP_STORED) as zf:
-                for root, dirs, files in os.walk(user_dir):
-                    for fn in files:
-                        full = os.path.join(root, fn)
-                        # skip the zip itself if somehow inside
-                        if Path(full) == zip_out:
-                            continue
-                        arc = os.path.relpath(full, user_dir)
-                        zf.write(full, arc)
-
-            await progress_msg.edit_text("🚀 Архив собран. Отправляю...")
+        # Separate files: too large (> MAX_SINGLE_FILE_SIZE) cannot be sent
+        too_large = [rel for rel, info in matches.items() if info.get("size", 0) > MAX_SINGLE_FILE_SIZE]
+        if too_large:
+            txt = "❌ В запросе есть файлы, превышающие допустимый однофайловый лимит (>1450 МБ):\n" + "\n".join(
+                f"• `{r}`" for r in too_large)
+            txt += "\n\nПожалуйста, удалите эти файлы из запроса или обратитесь к администратору."
             try:
-                # send typing + upload action
-                await bot.send_chat_action(cq.message.chat.id, ChatAction.UPLOAD_DOCUMENT)
+                await cq.message.edit_text(txt, parse_mode="Markdown")
+            except Exception:
+                pass
+            await cq.answer()
+            return
+
+        # Proceed: prepare user folder and copy files
+        db_cfg = load_db()
+        psdz_root = Path(db_cfg.get("psdzdata_root", ""))
+        output_base = Path(db_cfg.get("output_base", ""))
+        if not (psdz_root.exists() and output_base.exists()):
+            await cq.message.answer("⚠️ Системная ошибка: psdz_root/output_base не доступны.")
+            await cq.answer()
+            return
+
+        user_dir = output_base / uid
+        # Fresh build: remove existing psdzdata folder (but keep maybe other files)
+        psdz_dest = user_dir / "psdzdata"
+        if psdz_dest.exists():
+            shutil.rmtree(psdz_dest)
+        psdz_dest.mkdir(parents=True, exist_ok=True)
+
+        # Progress message
+        progress_msg = await cq.message.answer("🔁 Копирование файлов: 0%")
+        await cq.answer()
+
+        items = list(matches.items())  # list of (rel, {"size":size})
+        total = len(items)
+        copied_count = 0
+        copied_list: List[Tuple[str, int]] = []
+        for i, (rel, info) in enumerate(items, start=1):
+            src = psdz_root / rel
+            dst = psdz_dest / rel
+            try:
+                if not src.exists():
+                    # skip missing files (should not happen because earlier we filtered by existence)
+                    await cq.message.answer(f"⚠️ Файл не найден на диске: `{rel}`", parse_mode="Markdown")
+                    continue
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+                size = info.get("size", src.stat().st_size if src.exists() else 0)
+                copied_list.append((rel, size))
+                copied_count += 1
+            except Exception as e:
+                await cq.message.answer(f"⚠️ Ошибка копирования `{rel}`: {e}")
+                log_error(f"Copy error {rel}: {e}")
+
+            pct = int(100 * i / total)
+            try:
+                await bot.send_chat_action(cq.message.chat.id, ChatAction.TYPING)
+            except Exception:
+                pass
+            try:
+                await progress_msg.edit_text(f"🔁 Копирование файлов: {i}/{total} ({pct}%)")
             except Exception:
                 pass
 
-            try:
-                await bot.send_document(cq.message.chat.id, document=FSInputFile(str(zip_out)),
-                                        caption="📦 Ваш архив готов")
-                log_info(f"Sent archive to user {uid}: {zip_out}")
-            except Exception as e:
-                await cq.message.answer(f"⚠️ Ошибка отправки архива: {e}")
-                log_error(f"send_document error: {e}")
-            await cq.message.answer("✅ Готово! Если нужно — начинайте новый поиск.")
+        if not copied_list:
+            await progress_msg.edit_text("❌ Ни один файл не был скопирован. Отмена.")
             await cq.answer()
+            return
 
-    # Start polling
+        # Now create batches by size
+        batches = make_batches_by_size(copied_list, MAX_ARCHIVE_SIZE)
+
+        # create zips in temporary folder under user_dir
+        tmp_out_dir = user_dir / "zips"
+        if tmp_out_dir.exists():
+            shutil.rmtree(tmp_out_dir)
+        tmp_out_dir.mkdir(parents=True, exist_ok=True)
+
+        zip_paths: List[Path] = []
+        # For each batch create zip
+        for idx, batch in enumerate(batches, start=1):
+            zip_name = f"Esys_FoxData_part{idx}.zip"
+            zip_path = tmp_out_dir / zip_name
+            # create zip directly from psdz_root using rel paths (so arcs contain psdzdata/rel)
+            # but our copied files are inside psdz_dest, so we can zip from there
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf:
+                for rel, _ in batch:
+                    full = psdz_dest / rel
+                    if full.exists():
+                        arc = os.path.join("psdzdata", rel)
+                        zf.write(str(full), arc)
+            zip_paths.append(zip_path)
+
+            try:
+                await progress_msg.edit_text(f"📦 Создан архив {idx}/{len(batches)} — {zip_name}")
+            except Exception:
+                pass
+
+        # If there are files that were in JSON but missing on disk, inform user
+        if not_on_disk:
+            try:
+                await cq.message.answer(
+                    "⚠️ Некоторые файлы присутствовали в JSON, но отсутствуют на диске и были пропущены:\n" + "\n".join(
+                        f"• `{r}`" for r in not_on_disk), parse_mode="Markdown")
+            except Exception:
+                pass
+
+        # Send zip files one by one
+        sent_count = 0
+        for zp in zip_paths:
+            try:
+                await bot.send_chat_action(cq.message.chat.id, ChatAction.UPLOAD_DOCUMENT)
+            except Exception:
+                pass
+            try:
+                await bot.send_document(cq.message.chat.id, document=FSInputFile(str(zp)),
+                                        caption=f"📦 Часть архива: {zp.name}")
+                sent_count += 1
+                log_info(f"Sent zip {zp} to user {uid}")
+            except Exception as e:
+                await cq.message.answer(f"⚠️ Ошибка отправки {zp.name}: {e}")
+                log_error(f"Send zip error {zp}: {e}")
+
+        # After successful sends, cleanup user folder
+        try:
+            cleanup_user_dir(user_dir)
+        except Exception:
+            pass
+
+        try:
+            await progress_msg.edit_text(f"✅ Отправлено {sent_count} архив(ов). Удачи!")
+        except Exception:
+            pass
+
+        await cq.message.answer("🦊 Готово — архивы отправлены. Если нужно, начните новый поиск с новыми названиями.")
+        await cq.answer()
+
+    # start polling
     try:
         status_signal.emit("Бот: polling...")
     except Exception:
@@ -701,7 +796,7 @@ async def start_bot(token: str, status_signal):
 
 
 # ----------------------------
-# Run GUI main
+# Main: run GUI
 # ----------------------------
 if __name__ == "__main__":
     app = QApplication(sys.argv)
