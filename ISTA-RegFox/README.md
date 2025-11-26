@@ -8,14 +8,15 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Windows_10%2F11-blue?logo=windows)]()
 [![Release](https://img.shields.io/badge/Download-ISTA--RegFox--V1.0-green?logo=github)](https://github.com/MrKarpovich/fox-engineering-bavaria/releases/tag/ISTA-RegFox-V1.0)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey)]()
+[![License](https://img.shields.io/badge/License-MIT-lightgrey)](https://github.com/MrKarpovich/fox-engineering-bavaria/blob/main/LICENSE)
 
-[🇷🇺 Русский](#%EF%B8%8F-русский) • [🇬🇧 English](#%EF%B8%8F-english)
+[🇷🇺 Русский](#russian) • [🇬🇧 English](#english)
 
 </div>
 
 ---
 
+<a id="russian"></a>
 ## 🇷🇺 Русский
 
 ### 💡 Что это?
@@ -57,6 +58,7 @@
 
 ---
 
+<a id="english"></a>
 ## 🇬🇧 English
 
 ### 💡 What is it?
