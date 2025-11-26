@@ -8,14 +8,15 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Windows_10%2F11-blue?logo=windows)]()
 [![Release](https://img.shields.io/badge/Download-PSDZData--Updater--v1.0-green?logo=github)](https://github.com/MrKarpovich/fox-engineering-bavaria/releases/tag/PSDZData-Updater-v1.0)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey)](./LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-lightgrey)](https://github.com/MrKarpovich/fox-engineering-bavaria/blob/main/LICENSE)
 
-[🇷🇺 Русский](#%EF%B8%8F-русский) • [🇬🇧 English](#%EF%B8%8F-english)
+[🇷🇺 Русский](#russian) • [🇬🇧 English](#english)
 
 </div>
 
 ---
 
+<a id="russian"></a>
 ## 🇷🇺 Русский
 
 ### 💡 Устали скачивать 300 ГБ?
@@ -48,6 +49,7 @@
 
 ---
 
+<a id="english"></a>
 ## 🇬🇧 English
 
 ### 💡 Tired of 300 GB downloads?
@@ -81,6 +83,6 @@ Does every ISTA/E-Sys update force you to re-download **hundreds of gigabytes** 
 ---
 
 ### 📜 License
-Distributed under the **[MIT License](./LICENSE)**.
+Distributed under the **[MIT License](https://github.com/MrKarpovich/fox-engineering-bavaria/blob/main/LICENSE)**.
 
 🦊 **Created with love for BMW engineers | Fox Engineering Bavaria**
