@@ -45,10 +45,8 @@ def generate_ledpatterns2(r, g, b):
 
 def generate_breathing(r, g, b):
     """Smooth breathing animation (47 bytes) — your peach→pink→purple style."""
-    # Header
     header = [0x14, 0x96]
 
-    # Red pulse (24 bytes) — from your manual example
     RED_PULSE = [
         0x00, 0x0A, 0x14, 0x1E, 0x3C, 0x46, 0x50, 0x5A,
         0x64, 0x6E, 0x82, 0x96, 0xFF, 0xF8, 0xE5, 0xC8,
@@ -56,14 +54,11 @@ def generate_breathing(r, g, b):
     ]
     red_scaled = [min(255, int(round(v * r / 255))) for v in RED_PULSE]
 
-    # Separator
     sep = [0x00]
 
-    # Green static (6 bytes)
     GREEN_STATIC = [0x0D, 0x1A, 0x40, 0x80, 0xBF, 0xFF]
     green_scaled = [min(255, int(round(v * g / 255))) for v in GREEN_STATIC]
 
-    # Blue pulse (14 bytes)
     BLUE_PULSE = [
         0x00, 0x03, 0x06, 0x0A, 0x14, 0x1E, 0x28,
         0x28, 0x1E, 0x14, 0x0A, 0x06, 0x03, 0x00
@@ -108,11 +103,15 @@ class BMWi3LEDGenerator:
             "<Configure>",
             lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
         )
-        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw", width=850)  # фиксированная ширина
         main_canvas.configure(yscrollcommand=scrollbar.set)
 
         main_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
+        # Убираем горизонтальную прокрутку и чёрную полосу
+        self.root.update_idletasks()
+        self.root.bind("<Configure>", lambda e: self.on_window_resize(e, main_canvas, scrollable_frame))
 
         # Style
         style = ttk.Style()
@@ -184,7 +183,7 @@ class BMWi3LEDGenerator:
                 command=lambda c=color, idx=i: self.select_palette_color(c, idx)
             )
             btn.grid(row=row, column=col, padx=2, pady=2)
-            if i == 30:  # pinkish
+            if i == 30:  # pink
                 btn.config(relief='sunken')
                 self.rgb = (255, 100, 200)
 
@@ -229,6 +228,13 @@ class BMWi3LEDGenerator:
         footer.pack(side='bottom', pady=10)
 
         self.on_mode_change()
+
+    def on_window_resize(self, event, canvas, frame):
+        """Убираем чёрную полосу справа."""
+        if event.widget == self.root:
+            # Установим ширину канваса, чтобы он не выходил за пределы окна
+            canvas.itemconfig(1, width=event.width - 30)  # 30px на скроллбар
+            canvas.configure(scrollregion=canvas.bbox("all"))
 
     def on_mode_change(self):
         text = "Сгенерировать статический цвет (LEDpatterns2)" if self.mode.get() == "static" else "Сгенерировать анимацию (LEDpatterns1)"
