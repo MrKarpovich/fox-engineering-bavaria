@@ -179,7 +179,7 @@ class AppGUI(ctk.CTk):
         # Window configuration
         self.title("🦊 BMW FSC Generator MDG1")
         self.geometry("600x500")
-        self.minsize(550, 450)
+        self.minsize(800, 400)
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
