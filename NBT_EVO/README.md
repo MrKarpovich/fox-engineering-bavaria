@@ -1,4 +1,4 @@
-# 🦊 Лисёнок из Минска — SSH Unlocker для BMW NBT EVO
+# 🦊 Лисёнок SSH Unlocker для BMW NBT EVO
 
 Простая программа для разблокировки SSH (и telnet/qconn) на **BMW NBT EVO**.
 
